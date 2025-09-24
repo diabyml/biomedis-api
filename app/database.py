@@ -16,8 +16,9 @@ if DATABASE_URL and DATABASE_URL.startswith("postgresql"):
     parsed_url = urllib.parse.urlparse(DATABASE_URL)
     # Re-encode the password (ensure it's not None)
     password = urllib.parse.quote_plus(parsed_url.password or "")
-    # Reconstruct the URL
-    DATABASE_URL = f"postgresql://{parsed_url.username}:{password}@{parsed_url.hostname}:{parsed_url.port}{parsed_url.path}"
+    # Only include port if it exists
+    port_part = f":{parsed_url.port}" if parsed_url.port else ""
+    DATABASE_URL = f"postgresql://{parsed_url.username}:{password}@{parsed_url.hostname}{port_part}{parsed_url.path}"
 
 # Create SQLAlchemy engine
 if DATABASE_URL:
