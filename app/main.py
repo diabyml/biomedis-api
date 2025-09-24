@@ -81,9 +81,9 @@ async def startup_event():
     app.include_router(auth.router)
     print("✅ Routers loaded successfully")
 
-@app.get("/")
-async def root():
-    return {"message": "Lab Equipment Company API is running!", "environment": environment}
+# @app.get("/")
+# async def root():
+#     return {"message": "Lab Equipment Company API is running!", "environment": environment}
 
 @app.get("/health")
 async def health_check():
