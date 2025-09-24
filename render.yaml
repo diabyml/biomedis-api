@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: lab-equipment-company
+    name: biomedis-api
     env: python
     plan: free
     region: oregon

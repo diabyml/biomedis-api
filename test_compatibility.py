@@ -20,13 +20,16 @@ def test_sqlalchemy_import():
     try:
         import sqlalchemy
         print(f"✅ SQLAlchemy version: {sqlalchemy.__version__}")
-        
         # Test basic functionality
-        from sqlalchemy import create_engine, text
+        from sqlalchemy.engine.create import create_engine
+        from sqlalchemy.sql.expression import text
         engine = create_engine("sqlite:///:memory:")
-        with engine.connect() as conn:
+        conn = engine.connect()
+        try:
             result = conn.execute(text("SELECT 1"))
             print("✅ SQLAlchemy basic functionality works")
+        finally:
+            conn.close()
         return True
     except Exception as e:
         print(f"❌ SQLAlchemy import error: {e}")
