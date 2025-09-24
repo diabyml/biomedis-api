@@ -3,6 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -11,19 +12,22 @@ load_dotenv()
 environment = os.getenv("ENVIRONMENT", "development")
 is_production = environment == "production"
 
+# Get the base directory path
+BASE_DIR = Path(__file__).parent.parent
+
 app = FastAPI(
-    title="Biomedis API",
+    title="Lab Equipment Company",
     description="E-commerce platform for laboratory equipment and reagents",
     version="1.0.0",
-    docs_url="/docs" if not is_production else None,  # Hide docs in production
-    redoc_url="/redoc" if not is_production else None,  # Hide redoc in production
+    docs_url="/docs" if not is_production else None,
+    redoc_url="/redoc" if not is_production else None,
 )
 
 # Configure CORS based on environment
 if is_production:
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # Update with your actual domain
+        allow_origins=["https://your-domain.onrender.com"],  # Update with your actual domain
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -37,11 +41,45 @@ else:
         allow_headers=["*"],
     )
 
-# Mount static files
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+# Create static and templates directories if they don't exist
+static_dir = BASE_DIR / "app" / "static"
+templates_dir = BASE_DIR / "app" / "templates"
+
+# Create directories if they don't exist
+static_dir.mkdir(parents=True, exist_ok=True)
+templates_dir.mkdir(parents=True, exist_ok=True)
+
+# Create subdirectories
+(static_dir / "css").mkdir(exist_ok=True)
+(static_dir / "images").mkdir(exist_ok=True)
+
+print(f"Static directory: {static_dir}")
+print(f"Templates directory: {templates_dir}")
+print(f"Static directory exists: {static_dir.exists()}")
+
+# Mount static files with more robust path handling
+try:
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+    print("✅ Static files mounted successfully")
+except Exception as e:
+    print(f"❌ Error mounting static files: {e}")
+    # Fallback: create a simple static file handler
+    from fastapi import HTTPException
+    from fastapi.responses import FileResponse
+    
+    @app.get("/static/{file_path:path}")
+    async def serve_static(file_path: str):
+        static_file = static_dir / file_path
+        if static_file.exists() and static_file.is_file():
+            return FileResponse(static_file)
+        raise HTTPException(status_code=404, detail="File not found")
 
 # Configure templates
-templates = Jinja2Templates(directory="app/templates")
+try:
+    templates = Jinja2Templates(directory=str(templates_dir))
+    print("✅ Templates configured successfully")
+except Exception as e:
+    print(f"❌ Error configuring templates: {e}")
 
 # Import and include routers
 from app.routers import frontend, admin, auth
@@ -56,10 +94,14 @@ async def root():
 
 @app.get("/health")
 async def health_check():
+    static_exists = static_dir.exists()
+    templates_exists = templates_dir.exists()
+    
     return {
         "status": "healthy", 
         "environment": environment,
-        "database": "connected"  # We'll enhance this later
+        "static_files": "available" if static_exists else "missing",
+        "templates": "available" if templates_exists else "missing"
     }
 
 # Production-specific middleware
