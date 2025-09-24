@@ -27,7 +27,7 @@ app = FastAPI(
 if is_production:
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["https://your-domain.onrender.com"],  # Update with your actual domain
+        allow_origins=["https://your-domain.onrender.com"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -55,24 +55,13 @@ templates_dir.mkdir(parents=True, exist_ok=True)
 
 print(f"Static directory: {static_dir}")
 print(f"Templates directory: {templates_dir}")
-print(f"Static directory exists: {static_dir.exists()}")
 
-# Mount static files with more robust path handling
+# Mount static files
 try:
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
     print("✅ Static files mounted successfully")
 except Exception as e:
     print(f"❌ Error mounting static files: {e}")
-    # Fallback: create a simple static file handler
-    from fastapi import HTTPException
-    from fastapi.responses import FileResponse
-    
-    @app.get("/static/{file_path:path}")
-    async def serve_static(file_path: str):
-        static_file = static_dir / file_path
-        if static_file.exists() and static_file.is_file():
-            return FileResponse(static_file)
-        raise HTTPException(status_code=404, detail="File not found")
 
 # Configure templates
 try:
@@ -81,12 +70,16 @@ try:
 except Exception as e:
     print(f"❌ Error configuring templates: {e}")
 
-# Import and include routers
-from app.routers import frontend, admin, auth
-
-app.include_router(frontend.router)
-app.include_router(admin.router)
-app.include_router(auth.router)
+# Import routers inside functions to avoid circular imports
+@app.on_event("startup")
+async def startup_event():
+    """Import routers after app is created to avoid circular imports"""
+    from app.routers import frontend, admin, auth
+    
+    app.include_router(frontend.router)
+    app.include_router(admin.router)
+    app.include_router(auth.router)
+    print("✅ Routers loaded successfully")
 
 @app.get("/")
 async def root():
@@ -113,3 +106,13 @@ if is_production:
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         return response
+
+# This allows running with python app/main.py directly
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "app.main:app", 
+        host="0.0.0.0", 
+        port=8000, 
+        reload=True if os.getenv("DEBUG") == "True" else False
+    )

@@ -1,14 +1,31 @@
-fastapi==0.104.0
+# Core Framework
+fastapi==0.104.1
 uvicorn[standard]==0.24.0
+
+# Templates
 jinja2==3.1.2
-sqlalchemy==2.0.23
+
+# Database (Use SQLAlchemy 1.4 for maximum compatibility)
+sqlalchemy==1.4.46
 psycopg2-binary==2.9.9
-python-multipart==0.0.6
-python-dotenv==1.0.0
-cloudinary==1.36.0
 alembic==1.13.0
+
+# File Uploads
+python-multipart==0.0.6
+
+# Configuration
+python-dotenv==1.0.0
+
+# Image Storage
+cloudinary==1.36.0
+
+# Authentication
 python-jose[cryptography]==3.3.0
-PyJWT
 passlib[bcrypt]==1.7.4
 email-validator==2.1.0
+
+# Production Server
 gunicorn==21.2.0
+
+# JWT Handling
+PyJWT

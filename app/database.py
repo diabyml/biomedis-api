@@ -1,7 +1,7 @@
 import os
-from sqlalchemy import create_engine
+from sqlalchemy.engine.create import create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm.session import sessionmaker
 from dotenv import load_dotenv
 import urllib.parse
 
@@ -12,26 +12,39 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Handle special characters in password for Render PostgreSQL
 if DATABASE_URL and DATABASE_URL.startswith("postgresql"):
-    # Parse and reconstruct URL to handle special characters
-    parsed_url = urllib.parse.urlparse(DATABASE_URL)
-    # Re-encode the password (ensure it's not None)
-    password = urllib.parse.quote_plus(parsed_url.password or "")
-    # Only include port if it exists
-    port_part = f":{parsed_url.port}" if parsed_url.port else ""
-    DATABASE_URL = f"postgresql://{parsed_url.username}:{password}@{parsed_url.hostname}{port_part}{parsed_url.path}"
+    try:
+        # Parse and reconstruct URL to handle special characters
+        parsed_url = urllib.parse.urlparse(DATABASE_URL)
+        if parsed_url.password:
+            password = urllib.parse.quote(parsed_url.password)
+            # Reconstruct the URL
+            DATABASE_URL = f"postgresql://{parsed_url.username}:{password}@{parsed_url.hostname}:{parsed_url.port}{parsed_url.path}"
+    except Exception as e:
+        print(f"Warning: Could not parse DATABASE_URL: {e}")
 
-# Create SQLAlchemy engine
-if DATABASE_URL:
-    engine = create_engine(
-        DATABASE_URL, 
-        # PostgreSQL-specific settings for production
-        pool_size=5,
-        max_overflow=10,
-        pool_pre_ping=True,
-        pool_recycle=300,  # Recycle connections after 5 minutes
-    )
+# Create SQLAlchemy engine with appropriate settings
+engine_args = {}
+if DATABASE_URL and DATABASE_URL.startswith("sqlite"):
+    engine_args["connect_args"] = {"check_same_thread": False}
 else:
-    engine = None
+    # PostgreSQL settings for production
+    engine_args.update({
+        "pool_size": 5,
+        "max_overflow": 10,
+        "pool_pre_ping": True,
+        "pool_recycle": 300,
+    })
+
+try:
+    if DATABASE_URL:
+        engine = create_engine(DATABASE_URL, **engine_args)
+        print(f"✅ Database engine created for: {DATABASE_URL.split('@')[-1]}")
+    else:
+        raise ValueError("DATABASE_URL is None")
+except Exception as e:
+    print(f"❌ Error creating database engine: {e}")
+    # Fallback for development
+    engine = create_engine("sqlite:///./fallback.db", connect_args={"check_same_thread": False})
 
 # Create SessionLocal class
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -48,7 +61,7 @@ def get_db():
         db.close()
 
 # Test database connection
-from sqlalchemy import text
+from sqlalchemy.sql.expression import text
 def test_database_connection():
     try:
         db = SessionLocal()

@@ -1,15 +1,19 @@
 from fastapi import APIRouter, Request, Depends
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session
-from app.database import get_db
 
 router = APIRouter(include_in_schema=False)
 templates = Jinja2Templates(directory="app/templates")
 
+# Import database dependency inside the route functions to avoid circular imports
 @router.get("/")
-async def homepage(request: Request, db: Session = Depends(get_db)):
+async def homepage(request: Request):
+    # Lazy import to avoid circular dependencies
+    from app.database import get_db
+    from sqlalchemy.orm.session import Session
+    
+    # We'll add database functionality later
     return templates.TemplateResponse("index.html", {"request": request})
 
 @router.get("/products")
-async def products_page(request: Request, db: Session = Depends(get_db)):
+async def products_page(request: Request):
     return templates.TemplateResponse("products.html", {"request": request})
